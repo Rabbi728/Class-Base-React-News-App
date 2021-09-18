@@ -1,92 +1,78 @@
-import React, { Component } from 'react'
+import { useState, useEffect } from 'react'
 import Loader from '../layouts/Loader';
 import Info from './Info'
 import InfiniteScroll from 'react-infinite-scroll-component';
-// import Pagination from '../layouts/Pagination';
 
-export class List extends Component {
+export default function List(props) {
+    const [article, setArticle] = useState([])
+    const [pageItem] = useState(6)
+    const [page, setPage] = useState(1)
+    const [totalResults, setTotalResults] = useState(0)
+    const [loading, setLoading] = useState(false)
 
-    constructor(props) {
-        super(props);
-        this.state = {
-            article: [],
-            pageItem: 6,
-            page: 1,
-            totalResults: 0,
-            loading: false,
-            hasMore: false,
-        }
-        document.title = this.wordCapitalize(props.category) + " - News App"
-    }
+    useEffect(() => {
+        document.title = wordCapitalize(props.category) + " - News App";
+        fetchArticleDatas()
+        // eslint-disable-next-line
+    }, [])
 
-    wordCapitalize = (word) => {
+    const wordCapitalize = (word) => {
         return word.charAt(0).toUpperCase() + word.slice(1);
     }
 
-    fetchArticleDatas = async () => {
-        this.props.setProgress(10)
-        this.setState({ loading: true })
-        let url = `https://newsapi.org/v2/top-headlines?country=in&category=${this.props.category}&apiKey=${process.env.REACT_APP_API_KEY}&pageSize=${this.state.pageItem}&page=${this.state.page}`;
+    const fetchArticleDatas = async () => {
+        props.setProgress(10)
+        setLoading(true)
+        let url = `https://newsapi.org/v2/top-headlines?country=in&category=${props.category}&apiKey=${process.env.REACT_APP_API_KEY}&pageSize=${pageItem}&page=${page}`;
         let res = await fetch(url);
-        this.props.setProgress(30)
+        props.setProgress(30)
         let data = await res.json();
-        this.props.setProgress(70) 
-        this.setState({
-            article: data.articles,
-            totalResults: data.totalResults,
-            loading: false
-        })
-        this.props.setProgress(100)
+        props.setProgress(70)
+        setArticle(data.articles)
+        setTotalResults(data.totalResults)
+        setLoading(false)
+        props.setProgress(100)
     }
 
-    fetchMoreData = async () => {
-        this.setState({ page: this.state.page + 1 })
-        let url = `https://newsapi.org/v2/top-headlines?country=in&category=${this.props.category}&apiKey=${process.env.REACT_APP_API_KEY}&pageSize=${this.state.pageItem}&page=${this.state.page}`;
+    const fetchMoreData = async () => {
+        setPage(page + 1)
+        let url = `https://newsapi.org/v2/top-headlines?country=in&category=${props.category}&apiKey=${process.env.REACT_APP_API_KEY}&pageSize=${pageItem}&page=${page+1}`;
         await fetch(url)
             .then((res) => res.json())
-            .then((data) =>
-                this.setState((state, props) => ({
-                    article: state.article.concat(data.articles),
-                    totalResults: data.totalResults,
-                }))
+            .then(function (data) {
+                setArticle(article.concat(data.articles))
+                setTotalResults(data.totalResults)
+            }
             );
     }
 
-    loadAfterClickPagination = (pageNumber) => {
-        this.setState({ page: pageNumber })
-        this.fetchArticleDatas();
-    }
+    // const loadAfterClickPagination = (pageNumber) => {
+    //     setPage(pageNumber)
+    //     fetchArticleDatas();
+    // }
 
-    componentDidMount() {
-        this.fetchArticleDatas();
-    }
+    return (
+        <>
+            <h2 className="my-4 text-center">Top Headline From {wordCapitalize(props.category)}</h2>
+            {loading && <Loader />}
+            <InfiniteScroll
+                dataLength={article.length}
+                next={fetchMoreData}
+                hasMore={article.length !== totalResults}
+                loader={<Loader />}
+            >
+                <div className="container">
+                    <div className="row mb-5">
 
-    render() {
-        return (
-            <>
-                <h2 className="my-4 text-center">Top Headline From {this.wordCapitalize(this.props.category)}</h2>
-                {this.state.loading && <Loader />}
-                <InfiniteScroll
-                    dataLength={this.state.article.length}
-                    next={this.fetchMoreData}
-                    hasMore={this.state.article.length !== this.state.totalResults}
-                    loader={<Loader />}
-                >
-                    <div className="container">
-                        <div className="row mb-5">
-
-                            {this.state.article.map((el) => {
-                                return <div key={el.url} className="col-md-4">
-                                    <Info details={el} />
-                                </div>
-                            })}
-                        </div>
+                        {article.map((el) => {
+                            return <div key={el.url} className="col-md-4">
+                                <Info details={el} />
+                            </div>
+                        })}
                     </div>
-                </InfiniteScroll>
-                {/* {!this.state.loading && this.state.totalResults > 0 && <Pagination loadData={this.loadAfterClickPagination} page={this.state.page} pageItem={this.state.pageItem} totalResults={this.state.totalResults}/>} */}
-            </>
-        )
-    }
+                </div>
+            </InfiniteScroll>
+            {/* {!loading && totalResults > 0 && <Pagination loadData={loadAfterClickPagination} page={page} pageItem={pageItem} totalResults={totalResults}/>} */}
+        </>
+    )
 }
-
-export default List
